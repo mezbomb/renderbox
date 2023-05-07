@@ -155,11 +155,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="helper.cpp" />
     <ClCompile Include="renderbox.cpp" />
     <ClCompile Include="renderengine.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="helper.h" />
     <ClInclude Include="renderengine.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="window.h" />

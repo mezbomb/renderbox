@@ -33,7 +33,7 @@ public:
 	void shutdown() override;
 	void render() override;
 
-
+private:
 	// TODO: Typedef the Microsoft Verbosity out.
 	Microsoft::WRL::ComPtr<ID3D12Device>              m_Device;
 	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_CommandListAllocator;
@@ -41,8 +41,32 @@ public:
 	Microsoft::WRL::ComPtr<IDXGIDevice2>              m_DXGIDevice;
 	Microsoft::WRL::ComPtr<IDXGISwapChain>            m_SwapChain;
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_CommandList;
+	Microsoft::WRL::ComPtr<ID3D12Resource>            m_RenderTargets[3];
+
+	//Synchronization
 	Microsoft::WRL::ComPtr<ID3D12Fence>               m_Fence;
-	Microsoft::WRL::ComPtr<ID3D12Resource>            m_RenderTargets;
+	UINT64                                            m_FenceValue;
+	HANDLE                                            m_FenceEvent;
+
+	// Heaps
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_RTVHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_ConstantBufferHeap;
+
+	// Scene
+	std::vector<Vertex>                               m_VertexBufferData;
+	std::vector<uint32_t>                             m_IndexBufferData;
+	std::vector<uint32_t>                             m_ConstantBufferData;
+	Microsoft::WRL::ComPtr<ID3D12Resource>            m_VertexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource>            m_IndexBuffer;
+	Microsoft::WRL::ComPtr<ID3D12Resource>            m_ConstantBuffer;
+	D3D12_VERTEX_BUFFER_VIEW                          m_VertexBufferView;
+	D3D12_INDEX_BUFFER_VIEW							  m_IndexBufferView;
+	D3D12_CPU_DESCRIPTOR_HANDLE                       m_ConstantBufferView;
+	ModelViewProjection                               m_ModelViewProjectionMatrices;
+
+	// Simulation
+	Simulation                                        m_Simulation;
+
 
 	void    WaitForCommandQueueFence() {};
 	HRESULT ResizeSwapChain() {};
