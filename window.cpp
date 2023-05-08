@@ -1,13 +1,14 @@
+#pragma once
 #include "window.h"
 
 Window::Window() :
-	m_width(640),
-	m_height(480),
-	m_pWindow(nullptr),
-	m_pWindowSurface(nullptr),
+    m_width(640),
+    m_height(480),
+    m_pWindow(nullptr),
+    m_pWindowSurface(nullptr),
     m_WindowEvent(SDL_Event()),
     m_hWnd(nullptr){
-    
+
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Window Initialization Failure!", SDL_GetError(), nullptr);
     }

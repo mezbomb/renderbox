@@ -6,8 +6,11 @@
 
 // Graphics API
 #include <d3d12.h>
-#include <dxgi1_3.h>
+#include <dxgi1_2.h>
+#include <dxgi1_4.h>
 #include <DirectXMath.h>
+#include "d3dx12.h"
+#include <d3dcompiler.h>
 
 // Window Abstraction
 #include <SDL.h>
@@ -17,6 +20,3 @@
 #include <vector>
 #include <string>
 #include <chrono>
-
-// Other
-#include "helper.h"
