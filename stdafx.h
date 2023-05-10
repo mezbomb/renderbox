@@ -12,6 +12,11 @@
 #include "d3dx12.h"
 #include <d3dcompiler.h>
 
+// User Interface
+#include "imgui.h"
+#include "imgui_impl_sdl2.h"
+#include "imgui_impl_dx12.h"
+
 // Window Abstraction
 #include <SDL.h>
 

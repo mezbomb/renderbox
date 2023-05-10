@@ -62,7 +62,7 @@ private:
 
     // Heaps
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_RTVHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_ConstantBufferHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_SRVHeap;
     UINT                                              m_RTVDescriptorSize;
 
     // Scene
@@ -79,6 +79,7 @@ private:
  // Simulation
     Simulation                                        m_Simulation;
 
+    void    InitializeUserInterface(const Window&);
     void    RecordCommands();
     void    WaitForCommandQueueFence() {};
     HRESULT ResizeSwapChain() {};

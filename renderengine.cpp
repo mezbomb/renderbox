@@ -7,6 +7,15 @@ using namespace DirectX;
 void D3D12RenderEngine::init(const Window& window) {
     HWND hwnd = window.getHWND();
 
+#ifdef _DEBUG
+    {
+        ID3D12Debug* debugController;
+        DX_CHECK(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+        debugController->EnableDebugLayer();
+        debugController->Release();
+    }
+#endif
+
     //TODO: Adapter Selection
     DX_CHECK(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&m_Device)));
 
@@ -49,7 +58,7 @@ void D3D12RenderEngine::init(const Window& window) {
 
     if (swapChain != nullptr) {
         DX_CHECK(swapChain.As(&m_SwapChain));
-        m_SwapChain->ResizeBuffers(3, 640, 480, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+        m_SwapChain->ResizeBuffers(3, 1280, 720, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
         m_FrameIndex = m_SwapChain->GetCurrentBackBufferIndex();
     }
 
@@ -70,15 +79,21 @@ void D3D12RenderEngine::init(const Window& window) {
 
     m_ViewPort.TopLeftX = 0.0f;
     m_ViewPort.TopLeftY = 0.0f;
-    m_ViewPort.Width = 640;
-    m_ViewPort.Height = 480;
+    m_ViewPort.Width = 1280;
+    m_ViewPort.Height = 720;
     m_ViewPort.MaxDepth = 0.0f;
     m_ViewPort.MinDepth = 1.0f;
 
-    m_ScissorRect.left = 0.0f;
-    m_ScissorRect.top = 0.0f;
-    m_ScissorRect.right = 640;
-    m_ScissorRect.bottom = 480;
+    m_ScissorRect.left = 0;
+    m_ScissorRect.top = 0;
+    m_ScissorRect.right = 1280;
+    m_ScissorRect.bottom = 720;
+
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    rtvHeapDesc.NumDescriptors = 1;
+    DX_CHECK(m_Device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_SRVHeap)));
 
     // Graphics initialization is complete.  We could move the rest to asset loading / pipeline state.
     CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
@@ -129,7 +144,7 @@ void D3D12RenderEngine::init(const Window& window) {
     DX_CHECK(m_CommandList->Close());
 
     // TODO: make window class more verbose.
-    float aspectRatio = static_cast<float>(640) / static_cast<float>(480);
+    float aspectRatio = static_cast<float>(1280) / static_cast<float>(720);
     Vertex triangleVertices[] =
     {
         { { 0.0f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
@@ -166,9 +181,30 @@ void D3D12RenderEngine::init(const Window& window) {
     m_VertexBufferView.StrideInBytes = sizeof(Vertex);
     m_VertexBufferView.SizeInBytes = vertexBufferSize;
 
+    InitializeUserInterface(window);
+
     // Begin Simulation
     m_Simulation.m_StartTime = std::chrono::high_resolution_clock::now();
 
+}
+
+void D3D12RenderEngine::InitializeUserInterface(const Window& window) {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    ImGui::StyleColorsDark(); // Everybody loves the dark :)
+
+    ImGui_ImplSDL2_InitForD3D(window.getWindow());
+    ImGui_ImplDX12_Init(
+        m_Device.Get(),
+        3,
+        DXGI_FORMAT_R8G8B8A8_UNORM,
+        m_SRVHeap.Get(),
+        m_SRVHeap->GetCPUDescriptorHandleForHeapStart(),
+        m_SRVHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 void D3D12RenderEngine::shutdown() {
@@ -214,6 +250,12 @@ void D3D12RenderEngine::RecordCommands(){
     m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
     m_CommandList->DrawInstanced(3, 1, 0, 0);
 
+    // Render Dear ImGui graphics
+    ID3D12DescriptorHeap* ppHeaps{ m_SRVHeap.Get() };
+    m_CommandList->SetDescriptorHeaps(1, &ppHeaps );
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CommandList.Get());
+
+
     // Indicate that the back buffer will now be used to present.
     barrier = CD3DX12_RESOURCE_BARRIER::Transition(
         renderTarget,
@@ -236,6 +278,51 @@ void D3D12RenderEngine::render() {
     }
 
     m_Simulation.m_StartTime = std::chrono::high_resolution_clock::now();
+
+    ImGuiIO& io = ImGui::GetIO();
+    bool show_demo_window = true;
+    bool show_another_window = false;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    if (show_demo_window) {
+        ImGui::ShowDemoWindow(&show_demo_window);
+    }
+
+    // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
+    {
+        static float f = 0.0f;
+        static int counter = 0;
+
+        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+        ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+
+        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+            counter++;
+        ImGui::SameLine();
+        ImGui::Text("counter = %d", counter);
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::End();
+    }
+    // 3. Show another simple window.
+    if (show_another_window)
+    {
+        ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+        ImGui::Text("Hello from another window!");
+        if (ImGui::Button("Close Me"))
+            show_another_window = false;
+        ImGui::End();
+    }
+    ImGui::Render();
 
     // TODO: Refactor to allow recording from other threads.
     RecordCommands();

@@ -2,8 +2,8 @@
 #include "window.h"
 
 Window::Window() :
-    m_width(640),
-    m_height(480),
+    m_width(1280),
+    m_height(720),
     m_pWindow(nullptr),
     m_pWindowSurface(nullptr),
     m_WindowEvent(SDL_Event()),
