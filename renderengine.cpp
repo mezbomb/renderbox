@@ -7,7 +7,7 @@ using namespace DirectX;
 void D3D12RenderEngine::init(const Window& window) {
     HWND hwnd = window.getHWND();
 
-#ifdef _DEBUG
+#ifdef NOT_DEBUG
     {
         ID3D12Debug* debugController;
         DX_CHECK(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
@@ -90,9 +90,9 @@ void D3D12RenderEngine::init(const Window& window) {
     m_ScissorRect.bottom = 720;
 
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    rtvHeapDesc.NumDescriptors = 1;
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    srvHeapDesc.NumDescriptors = 1;
     DX_CHECK(m_Device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_SRVHeap)));
 
     // Graphics initialization is complete.  We could move the rest to asset loading / pipeline state.
@@ -197,7 +197,7 @@ void D3D12RenderEngine::InitializeUserInterface(const Window& window) {
 
     ImGui::StyleColorsDark(); // Everybody loves the dark :)
 
-    ImGui_ImplSDL2_InitForD3D(window.getWindow());
+    ImGui_ImplWin32_Init(window.getHWND());
     ImGui_ImplDX12_Init(
         m_Device.Get(),
         3,
@@ -251,8 +251,8 @@ void D3D12RenderEngine::RecordCommands(){
     m_CommandList->DrawInstanced(3, 1, 0, 0);
 
     // Render Dear ImGui graphics
-    ID3D12DescriptorHeap* ppHeaps{ m_SRVHeap.Get() };
-    m_CommandList->SetDescriptorHeaps(1, &ppHeaps );
+    ID3D12DescriptorHeap* pHeap = m_SRVHeap.Get();
+    m_CommandList->SetDescriptorHeaps(1, &pHeap );
     ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_CommandList.Get());
 
 
@@ -285,7 +285,7 @@ void D3D12RenderEngine::render() {
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     ImGui_ImplDX12_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
     if (show_demo_window) {
@@ -329,6 +329,13 @@ void D3D12RenderEngine::render() {
 
     ID3D12CommandList* ppCommandLists[] = { m_CommandList.Get()};
     m_CommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+    // Update and Render additional Platform Windows
+    if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_CommandList.Get());
+    }
 
     // 1 means we wait for vsync, the 0 is for flags.
     m_SwapChain->Present(1, 0);

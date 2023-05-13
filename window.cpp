@@ -1,5 +1,6 @@
 #pragma once
 #include "window.h"
+#include "SDL_syswm.h"
 
 Window::Window() :
     m_width(1280),
@@ -9,7 +10,7 @@ Window::Window() :
     m_WindowEvent(SDL_Event()),
     m_hWnd(nullptr){
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Window Initialization Failure!", SDL_GetError(), nullptr);
     }
 
@@ -18,14 +19,18 @@ Window::Window() :
         SDL_WINDOWPOS_CENTERED,
         m_width,
         m_height,
-        SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE);
+        SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
     if (nullptr == m_pWindow) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Window Initialization Failure!", SDL_GetError(), nullptr);
     }
     else {
         m_pWindowSurface = SDL_GetWindowSurface(m_pWindow);
-        m_hWnd = GetActiveWindow();
+        SDL_SysWMinfo info = {};
+        SDL_VERSION(&info.version);
+        SDL_GetWindowWMInfo(m_pWindow, &info);
+        m_hWnd = info.info.win.window;
+        int test = 0;
     }
 }
 
