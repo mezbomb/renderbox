@@ -192,8 +192,12 @@ void D3D12RenderEngine::InitializeUserInterface(const Window& window) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    io.DeltaTime = 0.0f;
+    io.DisplaySize = ImVec2(window.getWidth(), window.getHeight());
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
 
     ImGui::StyleColorsDark(); // Everybody loves the dark :)
 
@@ -280,6 +284,7 @@ void D3D12RenderEngine::render() {
     m_Simulation.m_StartTime = std::chrono::high_resolution_clock::now();
 
     ImGuiIO& io = ImGui::GetIO();
+    io.DeltaTime += time;
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
