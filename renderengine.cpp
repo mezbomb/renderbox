@@ -81,8 +81,8 @@ void D3D12RenderEngine::init(const Window& window) {
     m_ViewPort.TopLeftY = 0.0f;
     m_ViewPort.Width = 1280;
     m_ViewPort.Height = 720;
-    m_ViewPort.MaxDepth = 0.0f;
-    m_ViewPort.MinDepth = 1.0f;
+    m_ViewPort.MaxDepth = 1.0f;
+    m_ViewPort.MinDepth = 0.0f;
 
     m_ScissorRect.left = 0;
     m_ScissorRect.top = 0;
@@ -95,9 +95,52 @@ void D3D12RenderEngine::init(const Window& window) {
     srvHeapDesc.NumDescriptors = 1;
     DX_CHECK(m_Device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&m_SRVHeap)));
 
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+    dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+    dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    dsvHeapDesc.NumDescriptors = 1;
+    DX_CHECK(m_Device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
+    CD3DX12_DEPTH_STENCIL_DESC depthStencilStateDesc = CD3DX12_DEPTH_STENCIL_DESC();
+    CD3DX12_RESOURCE_DESC depthStencilBufferDesc = {};
+    depthStencilBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthStencilBufferDesc.Width = 1280;
+    depthStencilBufferDesc.Height = 720;
+    depthStencilBufferDesc.DepthOrArraySize = 1;
+    depthStencilBufferDesc.MipLevels = 1;
+    depthStencilBufferDesc.SampleDesc.Count = 1;
+    depthStencilBufferDesc.SampleDesc.Quality = 0;
+    depthStencilBufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+    depthStencilBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+    D3D12_DEPTH_STENCIL_VALUE dsValue = { 1.0f, 0 };
+    D3D12_CLEAR_VALUE depthClearValue;
+    depthClearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthClearValue.DepthStencil = dsValue;
+
+    CD3DX12_HEAP_PROPERTIES dsvHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+    DX_CHECK(m_Device->CreateCommittedResource(
+        &dsvHeapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &depthStencilBufferDesc,
+        D3D12_RESOURCE_STATE_DEPTH_WRITE,
+        &depthClearValue,
+        IID_PPV_ARGS(&m_DepthStencilBuffer)));
+
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvViewDesc = {};
+    dsvViewDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsvViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvViewDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+    // Don't like that it doesn't return an HRESULT...
+    m_DSBufferView = m_DSVHeap.Get()->GetCPUDescriptorHandleForHeapStart();
+    m_Device->CreateDepthStencilView(m_DepthStencilBuffer.Get(), &dsvViewDesc, m_DSBufferView);
+
     // Graphics initialization is complete.  We could move the rest to asset loading / pipeline state.
-    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-    rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+    CD3DX12_ROOT_PARAMETER rootParameters[1];
+    rootParameters[0].InitAsConstantBufferView(0);
+    //rootParameters[1].InitAsDescriptorTable(1, &srvHeapDesc);
+    CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc(1, rootParameters, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
     Microsoft::WRL::ComPtr<ID3DBlob> signature;
     Microsoft::WRL::ComPtr<ID3DBlob> error;
@@ -116,13 +159,16 @@ void D3D12RenderEngine::init(const Window& window) {
         { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 
+    // TODO: Pulled raster state out to turn off culling for debugging depth buffer.
+    CD3DX12_RASTERIZER_DESC rasterStateDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    rasterStateDesc.CullMode = D3D12_CULL_MODE_BACK;
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDesc, _countof(inputElementDesc) };
     psoDesc.pRootSignature = m_RootSignature.Get();
     psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
     psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
-    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    psoDesc.RasterizerState = rasterStateDesc;
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState.DepthEnable = FALSE;
     psoDesc.DepthStencilState.StencilEnable = FALSE;
@@ -145,14 +191,33 @@ void D3D12RenderEngine::init(const Window& window) {
 
     // TODO: make window class more verbose.
     float aspectRatio = static_cast<float>(1280) / static_cast<float>(720);
-    Vertex triangleVertices[] =
+    float triangleHeight = 0.5f;  // Height of the equilateral triangle
+    float triangleDepth = 0.5f;  // Depth of the tetrahedron
+
+    Vertex vertices[] =
     {
-        { { 0.0f, 0.25f * aspectRatio, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },
-        { { 0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },
-        { { -0.25f, -0.25f * aspectRatio, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } }
+        // Side 1 (red)
+        { { 0.0f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top vertex
+        { { 0.5f, 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Bottom right vertex
+        { { -0.5f, 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Bottom left vertex
+
+        // Side 2 (blue)
+        { { 0.0f, triangleHeight, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Top vertex
+        { { -0.5f, -triangleHeight, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Bottom left vertex
+        { { 0.0f, -triangleHeight, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Bottom back vertex
+
+        // Side 3 (green)
+        { { 0.0f, triangleHeight, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Top vertex
+        { { 0.0f, -triangleHeight, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom back vertex
+        { { 0.5f, -triangleHeight, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom right vertex
+
+        // Side 4 (white)
+        { { -0.5f, -triangleHeight, -0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },  // Bottom left vertex
+        { { 0.5f, -triangleHeight, -0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },  // Bottom right vertex
+        { { 0.0f, -triangleHeight, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } }  // Bottom back vertex
     };
 
-    const UINT vertexBufferSize = sizeof(triangleVertices);
+    const UINT vertexBufferSize = sizeof(vertices);
 
     // TODO: from MSFT tutorial.
     // Note: using upload heaps to transfer static data like vert buffers is not 
@@ -173,13 +238,23 @@ void D3D12RenderEngine::init(const Window& window) {
     UINT8* pVertexDataBegin;
     CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
     DX_CHECK(m_VertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-    memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
+    memcpy(pVertexDataBegin, vertices, sizeof(vertices));
     m_VertexBuffer->Unmap(0, nullptr);
 
     // Initialize the vertex buffer view.
     m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
     m_VertexBufferView.StrideInBytes = sizeof(Vertex);
     m_VertexBufferView.SizeInBytes = vertexBufferSize;
+
+    CD3DX12_RESOURCE_DESC cbDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(XMMATRIX));
+    // Create the constant buffer resource
+    m_Device->CreateCommittedResource(
+        &heapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &cbDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_ConstantBuffer));
 
     InitializeUserInterface(window);
 
@@ -193,7 +268,7 @@ void D3D12RenderEngine::InitializeUserInterface(const Window& window) {
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.DeltaTime = 0.0f;
-    io.DisplaySize = ImVec2(window.getWidth(), window.getHeight());
+    io.DisplaySize = ImVec2(static_cast<float>(window.getWidth()), static_cast<float>(window.getHeight()));
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
@@ -228,8 +303,11 @@ void D3D12RenderEngine::RecordCommands(){
 
     // Set necessary state.
     m_CommandList->SetGraphicsRootSignature(m_RootSignature.Get());
+    UpdateTransforms();
+
     m_CommandList->RSSetViewports(1, &m_ViewPort);
     m_CommandList->RSSetScissorRects(1, &m_ScissorRect);
+    m_CommandList->ClearDepthStencilView(m_DSBufferView, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
     auto renderTarget = m_RenderTargets[m_FrameIndex].Get();
     CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -245,14 +323,14 @@ void D3D12RenderEngine::RecordCommands(){
         m_FrameIndex,
         m_RTVDescriptorSize);
 
-    m_CommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+    m_CommandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &m_DSBufferView);
 
     // Record commands.
     const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
     m_CommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-    m_CommandList->DrawInstanced(3, 1, 0, 0);
+    m_CommandList->DrawInstanced(12, 1, 0, 0);
 
     // Render Dear ImGui graphics
     ID3D12DescriptorHeap* pHeap = m_SRVHeap.Get();
@@ -271,6 +349,41 @@ void D3D12RenderEngine::RecordCommands(){
     DX_CHECK(m_CommandList->Close());
 }
 
+void D3D12RenderEngine::UpdateTransforms() {
+
+    float rotationSpeed = 0.0001f;
+    float rotationAngle = rotationSpeed * m_ElapsedTime;
+    XMMATRIX rot = XMMatrixRotationX(rotationAngle) * XMMatrixRotationY(rotationAngle) * XMMatrixRotationZ(rotationAngle);
+
+    XMMATRIX modelMatrix = XMMatrixIdentity(); // Identity matrix for the model transformation
+    modelMatrix = modelMatrix * rot; //apply rotation to the model
+
+    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -1.0f, 1.0f);  // Camera position
+    XMVECTOR focusPosition = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);  // Camera focus point
+    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);  // Up direction
+
+    XMMATRIX viewMatrix = XMMatrixLookAtLH(eyePosition, focusPosition, upDirection);  // View matrix
+
+    float fovAngleY = XMConvertToRadians(45.0f);  // Field of view angle in radians
+    float nearPlane = 0.1f;  // Near clipping plane distance
+    float farPlane = 100.0f;  // Far clipping plane distance
+
+    float aspectRatio = 1280.0f / 720.0f;
+    XMMATRIX projectionMatrix = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, nearPlane, farPlane);  // Projection matrix
+    XMMATRIX mvpMatrix = modelMatrix * viewMatrix * projectionMatrix;
+
+    // Map the constant buffer for CPU write access
+    XMMATRIX* cbuffer;
+    m_ConstantBuffer->Map(0, nullptr, reinterpret_cast<void**>(&cbuffer));
+    *cbuffer = mvpMatrix;
+
+    // Unmap the constant buffer
+    m_ConstantBuffer->Unmap(0, nullptr);
+
+    // Bind the constant buffer to the appropriate shader register
+    m_CommandList->SetGraphicsRootConstantBufferView(0, m_ConstantBuffer->GetGPUVirtualAddress());
+}
+
 void D3D12RenderEngine::render() {
     m_Simulation.m_EndTime = std::chrono::high_resolution_clock::now();
 
@@ -282,6 +395,7 @@ void D3D12RenderEngine::render() {
     }
 
     m_Simulation.m_StartTime = std::chrono::high_resolution_clock::now();
+    m_ElapsedTime += time;
 
     ImGuiIO& io = ImGui::GetIO();
     io.DeltaTime += time;

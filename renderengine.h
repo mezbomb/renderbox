@@ -40,6 +40,8 @@ public:
     void shutdown() override;
     void render() override;
 
+    float m_ElapsedTime = 0.0;
+
 private:
     // TODO: Typedef the Microsoft Verbosity out.
     // Pipeline State
@@ -63,6 +65,7 @@ private:
     // Heaps
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_RTVHeap;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_SRVHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_DSVHeap;
     UINT                                              m_RTVDescriptorSize;
 
     // Scene
@@ -72,14 +75,17 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource>            m_VertexBuffer;
     Microsoft::WRL::ComPtr<ID3D12Resource>            m_IndexBuffer;
     Microsoft::WRL::ComPtr<ID3D12Resource>            m_ConstantBuffer;
+    Microsoft::WRL::ComPtr<ID3D12Resource>            m_DepthStencilBuffer;
     D3D12_VERTEX_BUFFER_VIEW                          m_VertexBufferView;
     D3D12_INDEX_BUFFER_VIEW                           m_IndexBufferView;
     D3D12_CPU_DESCRIPTOR_HANDLE                       m_ConstantBufferView;
+    D3D12_CPU_DESCRIPTOR_HANDLE                       m_DSBufferView;
 
  // Simulation
     Simulation                                        m_Simulation;
 
     void    InitializeUserInterface(const Window&);
+    void    UpdateTransforms();
     void    RecordCommands();
     void    WaitForCommandQueueFence() {};
     HRESULT ResizeSwapChain() {};

@@ -15,17 +15,30 @@ struct PSInput
     float4 color : COLOR;
 };
 
-PSInput main(float4 position : POSITION, float4 color : COLOR)
+struct VSInput
 {
-    PSInput result;
+    float3 position : POSITION;
+    float4 color : COLOR;
+};
 
-    result.position = position;
-    result.color = color;
+cbuffer ConstantBuffer : register(b0)
+{
+    matrix mvp;
+};
 
-    return result;
+PSInput main(VSInput input)
+{
+    PSInput output;
+
+    output.position = mul(float4(input.position, 1.0f), mvp);
+    output.color = input.color;
+
+    return output;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET
 {
     return input.color;
 }
+
+
