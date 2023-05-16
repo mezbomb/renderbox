@@ -162,6 +162,7 @@ void D3D12RenderEngine::init(const Window& window) {
     // TODO: Pulled raster state out to turn off culling for debugging depth buffer.
     CD3DX12_RASTERIZER_DESC rasterStateDesc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     rasterStateDesc.CullMode = D3D12_CULL_MODE_BACK;
+    rasterStateDesc.FrontCounterClockwise = TRUE;
     // Describe and create the graphics pipeline state object (PSO).
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = { inputElementDesc, _countof(inputElementDesc) };
@@ -189,32 +190,43 @@ void D3D12RenderEngine::init(const Window& window) {
 
     DX_CHECK(m_CommandList->Close());
 
-    // TODO: make window class more verbose.
-    float aspectRatio = static_cast<float>(1280) / static_cast<float>(720);
-    float triangleHeight = 0.5f;  // Height of the equilateral triangle
-    float triangleDepth = 0.5f;  // Depth of the tetrahedron
-
     Vertex vertices[] =
     {
-        // Side 1 (red)
-        { { 0.0f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Top vertex
-        { { 0.5f, 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Bottom right vertex
-        { { -0.5f, 0.0f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },  // Bottom left vertex
+        // Front face
+        { { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Bottom-left-front
+        { { -0.5f, 0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },    // Top-left-front
+        { { 0.5f, 0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },     // Top-right-front
+        { { 0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },    // Bottom-right-front
 
-        // Side 2 (blue)
-        { { 0.0f, triangleHeight, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Top vertex
-        { { -0.5f, -triangleHeight, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Bottom left vertex
-        { { 0.0f, -triangleHeight, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },  // Bottom back vertex
+        // Back face
+        { { -0.5f, -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },    // Bottom-left-back
+        { { -0.5f, 0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },     // Top-left-back
+        { { 0.5f, 0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },       // Top-right-back
+        { { 0.5f, -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },     // Bottom-right-back
 
-        // Side 3 (green)
-        { { 0.0f, triangleHeight, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Top vertex
-        { { 0.0f, -triangleHeight, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom back vertex
-        { { 0.5f, -triangleHeight, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },  // Bottom right vertex
+        // Left face
+        { { -0.5f, -0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },    // Bottom-left-back
+        { { -0.5f, 0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },     // Top-left-back
+        { { -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },    // Top-left-front
+        { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },   // Bottom-left-front
 
-        // Side 4 (white)
-        { { -0.5f, -triangleHeight, -0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },  // Bottom left vertex
-        { { 0.5f, -triangleHeight, -0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },  // Bottom right vertex
-        { { 0.0f, -triangleHeight, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } }  // Bottom back vertex
+        // Right face
+        { { 0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },    // Bottom-right-front
+        { { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },      // Top-right-front
+        { { 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },       // Top-right-back
+        { { 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },     // Bottom-right-back
+
+        // Top face
+        { { -0.5f, 0.5f, -0.5f }, {0.0f, 0.0f, 0.0f, 1.0f } },     // Top-left-front
+        { { -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },      // Top-left-back
+        { { 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },        // Top-right-back
+        { { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },      // Top-right-front
+
+        // Bottom face
+        { { -0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, 0.5f, 1.0f } },    // Bottom-left-front
+        { { -0.5f, -0.5f, 0.5f }, { 0.5f, 0.5f, 0.5f, 1.0f } },     // Bottom-left-back
+        { { 0.5f, -0.5f, 0.5f }, {  0.5f, 0.5f, 0.5f, 1.0f } },       // Bottom-right-back
+        { { 0.5f, -0.5f, -0.5f }, {  0.5f, 0.5f, 0.5f, 1.0f } },     // Bottom-right-front
     };
 
     const UINT vertexBufferSize = sizeof(vertices);
@@ -245,6 +257,53 @@ void D3D12RenderEngine::init(const Window& window) {
     m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
     m_VertexBufferView.StrideInBytes = sizeof(Vertex);
     m_VertexBufferView.SizeInBytes = vertexBufferSize;
+
+    // do the same for index buffer
+    // Indices for a cube with two triangles per face
+    UINT indices[] =
+    {
+        // Front face
+        2, 1, 0,    // Triangle 1
+        0, 3, 2,    // Triangle 2
+
+        // Back face
+        4, 5, 6,    // Triangle 1
+        6, 7, 4,    // Triangle 2
+
+        // Left face
+        10, 9, 8,   // Triangle 1
+        8, 11, 10,  // Triangle 2
+
+        // Right face
+        14, 13, 12, // Triangle 1
+        12, 15, 14, // Triangle 2
+
+        // Top face
+        18, 17, 16,    // Triangle 1
+        16, 19, 18,    // Triangle 2
+
+        // Bottom face
+        20, 21, 22,    // Triangle 1
+        22, 23, 20,     // Triangle 2
+    };
+
+    CD3DX12_RESOURCE_DESC ibDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(indices));
+    m_Device->CreateCommittedResource(
+        &heapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &ibDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_IndexBuffer));
+
+    void* pIndexData = nullptr;
+    m_IndexBuffer->Map(0, nullptr, &pIndexData);
+    memcpy(pIndexData, indices, sizeof(indices));
+    m_IndexBuffer->Unmap(0, nullptr);
+
+    m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
+    m_IndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+    m_IndexBufferView.SizeInBytes = sizeof(indices);
 
     CD3DX12_RESOURCE_DESC cbDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(XMMATRIX));
     // Create the constant buffer resource
@@ -330,7 +389,15 @@ void D3D12RenderEngine::RecordCommands(){
     m_CommandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_CommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_CommandList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
-    m_CommandList->DrawInstanced(12, 1, 0, 0);
+    m_CommandList->IASetIndexBuffer(&m_IndexBufferView);
+
+    // Issue cube face draw commands.
+    constexpr UINT numFaces = 6;
+    constexpr UINT indicesPerFace = 6;
+    for (UINT faceIndex = 0; faceIndex < numFaces; ++faceIndex) {
+        UINT startIndex = faceIndex * indicesPerFace;
+        m_CommandList->DrawIndexedInstanced(indicesPerFace, 1, startIndex, 0, 0);
+    }
 
     // Render Dear ImGui graphics
     ID3D12DescriptorHeap* pHeap = m_SRVHeap.Get();
@@ -351,14 +418,18 @@ void D3D12RenderEngine::RecordCommands(){
 
 void D3D12RenderEngine::UpdateTransforms() {
 
-    float rotationSpeed = 0.0001f;
-    float rotationAngle = rotationSpeed * m_ElapsedTime;
-    XMMATRIX rot = XMMatrixRotationX(rotationAngle) * XMMatrixRotationY(rotationAngle) * XMMatrixRotationZ(rotationAngle);
+    float speed = 0.001f;
+    float rotationAngleX = speed * m_ElapsedTime;
+    float rotationAngleY = speed * m_ElapsedTime;
+    float rotationAngleZ = speed * m_ElapsedTime;
+    float bottomSideRotationAngleY = XM_PIDIV4;  // 45deg
+    rotationAngleY += bottomSideRotationAngleY;
+    XMMATRIX rot = XMMatrixRotationX(rotationAngleX) * XMMatrixRotationY(rotationAngleY) * XMMatrixRotationZ(rotationAngleZ);
 
     XMMATRIX modelMatrix = XMMatrixIdentity(); // Identity matrix for the model transformation
     modelMatrix = modelMatrix * rot; //apply rotation to the model
 
-    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -1.0f, 1.0f);  // Camera position
+    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);  // Camera position
     XMVECTOR focusPosition = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);  // Camera focus point
     XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);  // Up direction
 

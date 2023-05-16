@@ -42,5 +42,10 @@ std::wstring GetAssetFullPath(LPCWSTR assetName)
 
 
 
-
+float getRandFloat(float from, float to) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(from, to);
+    return dis(gen);
+}
 

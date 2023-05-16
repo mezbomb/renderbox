@@ -30,7 +30,7 @@ PSInput main(VSInput input)
 {
     PSInput output;
 
-    output.position = mul(float4(input.position, 1.0f), mvp);
+    output.position = mul(mvp, float4(input.position, 1.0f) );
     output.color = input.color;
 
     return output;
