@@ -1,6 +1,10 @@
 #pragma once
 #include "window.h"
 #include "SDL_syswm.h"
+#include <DirectXMath.h>
+#include <algorithm>
+
+using namespace DirectX;
 
 Window::Window() :
     m_width(1280),
@@ -68,7 +72,33 @@ bool Window::isWindowActive() {
             case SDL_QUIT: { return false; }
             case SDL_MOUSEWHEEL:
             {
-                io.MouseWheel = event.wheel.y > 0 ? 1 : -1;
+                float zOffset = event.wheel.y > 0 ? 1.0f : -1.0f;
+                float scrollFactor = 1.0f;
+                io.MouseWheel = zOffset;
+                zOffset *= scrollFactor;
+
+                // Define the minimum and maximum distances from the focus point
+                const float minDistance = 5.0f;
+                const float maxDistance = 100.0f;
+
+                // Calculate the current distance from the focus point
+                float currentDistance = XMVectorGetX(XMVector3Length(m_pCamera->m_Position - m_pCamera->m_Focus));
+
+                // Calculate the desired new distance based on the scroll wheel input
+                float newDistance = currentDistance + zOffset;
+
+                // Clamp the new distance within the desired range
+                float clampedDistance = std::clamp(newDistance, minDistance, maxDistance);
+
+                // Calculate the direction vector from the focus point to the current camera position
+                XMVECTOR direction = XMVector3Normalize(m_pCamera->m_Position - m_pCamera->m_Focus);
+
+                // Calculate the new position by multiplying the direction vector by the clamped distance
+                XMVECTOR newPosition = m_pCamera->m_Focus + direction * clampedDistance;
+
+                // Update the camera's position
+                m_pCamera->m_Position = newPosition;
+
                 break;
             }
             case SDL_MOUSEBUTTONDOWN:
@@ -84,6 +114,39 @@ bool Window::isWindowActive() {
             case SDL_MOUSEMOTION:
             {
                 io.MousePos = ImVec2(event.motion.x, event.motion.y);
+
+                if (io.MouseDown[1])
+                {
+                    // Compute the mouse movement delta
+                    float deltaX = static_cast<float>(event.motion.xrel);
+                    float deltaY = static_cast<float>(event.motion.yrel);
+
+                    // Adjust the camera rotation based on the mouse movement
+                    float rotationSpeed = 0.01f;
+
+                    // Calculate the camera-to-focus vector
+                    XMVECTOR cameraToFocus = m_pCamera->m_Focus - m_pCamera->m_Position;
+
+                    // Calculate the distance from the camera to the focus point
+                    float distance = XMVectorGetX(XMVector3Length(cameraToFocus));
+
+                    // Calculate the right and up vectors
+                    XMVECTOR right = XMVector3Normalize(XMVector3Cross(m_pCamera->m_Up, cameraToFocus));
+                    XMVECTOR up = XMVector3Normalize(XMVector3Cross(cameraToFocus, right));
+
+                    // Rotate the camera around the focus point
+                    XMMATRIX rotation = XMMatrixRotationAxis(up, deltaX * rotationSpeed)
+                        * XMMatrixRotationAxis(right, deltaY * rotationSpeed);
+                    cameraToFocus = XMVector3Transform(cameraToFocus, rotation);
+
+                    // Update the camera position based on the new camera-to-focus vector
+                    m_pCamera->m_Position = m_pCamera->m_Focus - cameraToFocus;
+
+                    // Restore the distance from the focus point
+                    XMVECTOR newCameraToFocus = m_pCamera->m_Focus - m_pCamera->m_Position;
+                    newCameraToFocus = XMVector3Normalize(newCameraToFocus);
+                    m_pCamera->m_Position = m_pCamera->m_Focus - distance * newCameraToFocus;
+                }
                 break;
             }
             case SDL_TEXTINPUT:
@@ -108,4 +171,8 @@ bool Window::isWindowActive() {
         }
     }
     return true;
+}
+
+void Window::setCamera(Camera* pCam) {
+    m_pCamera = pCam;
 }

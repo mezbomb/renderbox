@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "window.h"
 #include "Simulation.hpp"
+#include "camera.h"
 
 #define DX_CHECK(expr) DX::ThrowIfFailed(expr, __FILE__, __LINE__)
 
@@ -29,18 +30,21 @@ struct Vertex
 
 class RenderEngine {
 public:
-    virtual void init( const Window& ) = 0;
+    virtual void init( Window& ) = 0;
     virtual void shutdown() = 0;
     virtual void render() = 0;
+
+    float m_ElapsedTime = 0.0;
+
+    // Simulation
+    Simulation                                        m_Simulation;
 };
 
 class D3D12RenderEngine : public RenderEngine {
 public:
-    void init( const Window& ) override;
+    void init( Window& ) override;
     void shutdown() override;
     void render() override;
-
-    float m_ElapsedTime = 0.0;
 
 private:
     // TODO: Typedef the Microsoft Verbosity out.
@@ -81,8 +85,10 @@ private:
     D3D12_CPU_DESCRIPTOR_HANDLE                       m_ConstantBufferView;
     D3D12_CPU_DESCRIPTOR_HANDLE                       m_DSBufferView;
 
- // Simulation
-    Simulation                                        m_Simulation;
+
+    // Camera
+    Camera                                            m_CameraWorld;
+    Camera                                            m_CameraShadows;
 
     void    InitializeUserInterface(const Window&);
     void    UpdateTransforms();

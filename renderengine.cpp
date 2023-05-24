@@ -4,7 +4,7 @@
 
 using namespace DirectX;
 
-void D3D12RenderEngine::init(const Window& window) {
+void D3D12RenderEngine::init(Window& window) {
     HWND hwnd = window.getHWND();
 
 #ifdef NOT_DEBUG
@@ -192,37 +192,37 @@ void D3D12RenderEngine::init(const Window& window) {
 
     Vertex vertices[] =
     {
-        // Front face
+        // Front face red
         { { -0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },   // Bottom-left-front
         { { -0.5f, 0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },    // Top-left-front
         { { 0.5f, 0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },     // Top-right-front
         { { 0.5f, -0.5f, -0.5f }, { 1.0f, 0.0f, 0.0f, 1.0f } },    // Bottom-right-front
 
-        // Back face
+        // Back face white
         { { -0.5f, -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },    // Bottom-left-back
         { { -0.5f, 0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },     // Top-left-back
         { { 0.5f, 0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },       // Top-right-back
         { { 0.5f, -0.5f, 0.5f }, { 1.0f, 1.0f, 1.0f, 1.0f } },     // Bottom-right-back
 
-        // Left face
+        // Left face green
         { { -0.5f, -0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },    // Bottom-left-back
         { { -0.5f, 0.5f, 0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },     // Top-left-back
         { { -0.5f, 0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },    // Top-left-front
         { { -0.5f, -0.5f, -0.5f }, { 0.0f, 1.0f, 0.0f, 1.0f } },   // Bottom-left-front
 
-        // Right face
+        // Right face blue -good
         { { 0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },    // Bottom-right-front
         { { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },      // Top-right-front
         { { 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },       // Top-right-back
         { { 0.5f, -0.5f, 0.5f }, { 0.0f, 0.0f, 1.0f, 1.0f } },     // Bottom-right-back
 
-        // Top face
-        { { -0.5f, 0.5f, -0.5f }, {0.0f, 0.0f, 0.0f, 1.0f } },     // Top-left-front
+        // Top face black -good
+        { { -0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },     // Top-left-front
         { { -0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },      // Top-left-back
         { { 0.5f, 0.5f, 0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },        // Top-right-back
         { { 0.5f, 0.5f, -0.5f }, { 0.0f, 0.0f, 0.0f, 1.0f } },      // Top-right-front
 
-        // Bottom face
+        // Bottom face grey -good
         { { -0.5f, -0.5f, -0.5f }, { 0.5f, 0.5f, 0.5f, 1.0f } },    // Bottom-left-front
         { { -0.5f, -0.5f, 0.5f }, { 0.5f, 0.5f, 0.5f, 1.0f } },     // Bottom-left-back
         { { 0.5f, -0.5f, 0.5f }, {  0.5f, 0.5f, 0.5f, 1.0f } },       // Bottom-right-back
@@ -263,28 +263,28 @@ void D3D12RenderEngine::init(const Window& window) {
     UINT indices[] =
     {
         // Front face
-        2, 1, 0,    // Triangle 1
+        0, 2, 1,    // Triangle 1
         0, 3, 2,    // Triangle 2
 
         // Back face
-        4, 5, 6,    // Triangle 1
-        6, 7, 4,    // Triangle 2
+        5, 6, 4,    // Triangle 3
+        6, 7, 4,    // Triangle 4
 
         // Left face
-        10, 9, 8,   // Triangle 1
-        8, 11, 10,  // Triangle 2
+        8, 10, 9,   // Triangle 5
+        8, 11, 10,  // Triangle 6
 
         // Right face
-        14, 13, 12, // Triangle 1
-        12, 15, 14, // Triangle 2
+        12, 14, 13, // Triangle 7
+        12, 15, 14, // Triangle 8
 
         // Top face
-        18, 17, 16,    // Triangle 1
-        16, 19, 18,    // Triangle 2
+        16, 18, 17,    // Triangle 9
+        16, 19, 18,    // Triangle 10
 
         // Bottom face
-        20, 21, 22,    // Triangle 1
-        22, 23, 20,     // Triangle 2
+        20, 21, 22,    // Triangle 11
+        20, 22, 23,    // Triangle 12
     };
 
     CD3DX12_RESOURCE_DESC ibDesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(indices));
@@ -316,6 +316,17 @@ void D3D12RenderEngine::init(const Window& window) {
         IID_PPV_ARGS(&m_ConstantBuffer));
 
     InitializeUserInterface(window);
+
+    // Setup Cameras
+    m_CameraWorld.m_Focus    = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);
+    m_CameraWorld.m_Position = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);
+    m_CameraWorld.m_Up       = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+
+    // Bind the main camera to the window so we can fwd input events.  // TODO: ecs plz
+    window.setCamera(&m_CameraWorld);
+
+    // TODO: Setup camera to handle shadow rendering.
+    // m_CameraShadows
 
     // Begin Simulation
     m_Simulation.m_StartTime = std::chrono::high_resolution_clock::now();
@@ -427,13 +438,9 @@ void D3D12RenderEngine::UpdateTransforms() {
     XMMATRIX rot = XMMatrixRotationX(rotationAngleX) * XMMatrixRotationY(rotationAngleY) * XMMatrixRotationZ(rotationAngleZ);
 
     XMMATRIX modelMatrix = XMMatrixIdentity(); // Identity matrix for the model transformation
-    modelMatrix = modelMatrix * rot; //apply rotation to the model
+    //modelMatrix = modelMatrix * rot; //apply rotation to the model
 
-    XMVECTOR eyePosition = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);  // Camera position
-    XMVECTOR focusPosition = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);  // Camera focus point
-    XMVECTOR upDirection = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);  // Up direction
-
-    XMMATRIX viewMatrix = XMMatrixLookAtLH(eyePosition, focusPosition, upDirection);  // View matrix
+    XMMATRIX viewMatrix = XMMatrixLookAtLH(m_CameraWorld.m_Position, m_CameraWorld.m_Focus, m_CameraWorld.m_Up);  // View matrix
 
     float fovAngleY = XMConvertToRadians(45.0f);  // Field of view angle in radians
     float nearPlane = 0.1f;  // Near clipping plane distance
@@ -456,20 +463,8 @@ void D3D12RenderEngine::UpdateTransforms() {
 }
 
 void D3D12RenderEngine::render() {
-    m_Simulation.m_EndTime = std::chrono::high_resolution_clock::now();
-
-    float time =
-        std::chrono::duration<float, std::milli>(m_Simulation.m_EndTime - m_Simulation.m_StartTime).count();
-    if (time < (1000.0f / 60.0f))
-    {
-        return;
-    }
-
-    m_Simulation.m_StartTime = std::chrono::high_resolution_clock::now();
-    m_ElapsedTime += time;
-
     ImGuiIO& io = ImGui::GetIO();
-    io.DeltaTime += time;
+    io.DeltaTime += m_ElapsedTime;
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);

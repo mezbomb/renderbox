@@ -1,6 +1,7 @@
 #pragma once
 
 #include "stdafx.h"
+#include "camera.h"
 
 class Window
 {
@@ -15,6 +16,7 @@ public:
     const int    getWidth()   const { return m_width; }
     bool         isWindowActive();
 
+    void setCamera( Camera* );
     void update();
 
 private:
@@ -24,5 +26,7 @@ private:
     SDL_Surface* m_pWindowSurface;
     SDL_Event    m_WindowEvent;
     HWND         m_hWnd;
+
+    Camera*      m_pCamera;
 };
 
